@@ -256,6 +256,10 @@
     <div class="tlabel">🔤 Extra large text</div>
     <label class="switch"><input type="checkbox" id="toggleXL" onchange="saveSettings()"><span class="slider"></span></label>
   </div>
+  <div style="margin-top:20px;">
+    <button class="bigbtn small" onclick="testGeminiKey()"><span class="emoji">🧪</span> Test Gemini Key</button>
+    <div id="testKeyResult" class="hint" style="font-size:15px;"></div>
+  </div>
 </section>
 
 <button class="repeat-fab" onclick="repeatLastSpeech()" aria-label="Repeat last message">🔊</button>
@@ -477,6 +481,40 @@ async function callGemini(photos, notes){
   return JSON.parse(text);
 }
 
+async function testGeminiKey(){
+  const resultEl = document.getElementById('testKeyResult');
+  if(!settings.geminiKey){
+    resultEl.textContent = 'No key saved yet — paste one above first.';
+    resultEl.style.color = 'var(--danger)';
+    return;
+  }
+  resultEl.textContent = 'Testing…';
+  resultEl.style.color = 'var(--ink-soft)';
+  const model = settings.geminiModel || 'gemini-2.5-flash';
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(settings.geminiKey)}`;
+  try{
+    const res = await fetch(url, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ contents:[{parts:[{text:'Reply with the single word: OK'}]}] })
+    });
+    const bodyText = await res.text();
+    if(res.ok){
+      resultEl.textContent = '✅ Success — this key and model work.';
+      resultEl.style.color = 'var(--ok)';
+      speak('Success. The key works.');
+    } else {
+      resultEl.textContent = `❌ Error ${res.status}: ${bodyText.slice(0,300)}`;
+      resultEl.style.color = 'var(--danger)';
+      speak('The test failed. See the error message on screen — a screenshot of this would help fix it.');
+    }
+  }catch(err){
+    resultEl.textContent = `❌ Could not reach Google at all: ${err.message}`;
+    resultEl.style.color = 'var(--danger)';
+    speak('Could not reach Google at all. Check your internet connection.');
+  }
+}
+
 function ensureOpenBatch(){
   if(!state.batchOpen){
     state.latestBatchId += 1;
@@ -517,9 +555,9 @@ async function finishItemAndReturn(){
   }catch(err){
     console.error(err);
     hideSpinner();
-    saveAsNeedsReview(itemId, photos, notes);
+    saveAsNeedsReview(itemId, photos, notes, err.message);
     speak('Could not reach Gemini, so this has been queued for your computer instead.');
-    toast('Queued for review — Gemini could not be reached');
+    toast('Gemini error: ' + err.message.slice(0,100));
     startNewItem(); showScreen('home'); refreshHome();
   }
 }
@@ -567,11 +605,12 @@ function saveAsConfirmed(itemId, photos, notes, result){
   state.history[key].displayName = item.name;
   saveState();
 }
-function saveAsNeedsReview(itemId, photos, notes){
+function saveAsNeedsReview(itemId, photos, notes, errorMsg){
   ensureOpenBatch();
   const item = {
     id: itemId, name: null, dateType: null, expiryDate: null, notes,
-    photos, status: 'needs_review', addedAt: Date.now(), batchId: state.latestBatchId
+    photos, status: 'needs_review', addedAt: Date.now(), batchId: state.latestBatchId,
+    errorMsg: errorMsg || null
   };
   state.items.push(item);
   sessionAdded.push(item.id);
@@ -853,6 +892,7 @@ function renderReview(){
       <div class="iname">Item added ${new Date(it.addedAt).toLocaleDateString('en-GB')}</div>
       <div class="thumb-row">${it.photos.map(p=>`<img src="${p}">`).join('')}</div>
       ${it.notes?`<div class="hint">${escapeHtml(it.notes)}</div>`:''}
+      ${it.errorMsg?`<div class="hint" style="color:var(--danger);">${escapeHtml(it.errorMsg)}</div>`:''}
       <div class="actions"><button onclick="deleteItem('${it.id}')">Delete</button></div>
     </div>`).join('');
 }
