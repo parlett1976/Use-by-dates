@@ -245,7 +245,7 @@
   </div>
   <div class="field-block">
     <label for="geminiModelInput">Gemini model name</label>
-    <input type="text" id="geminiModelInput" placeholder="gemini-2.5-flash" onchange="saveSettings()">
+    <input type="text" id="geminiModelInput" placeholder="gemini-3.6-flash" onchange="saveSettings()">
     <div class="hint">Leave as default unless it stops working — Google occasionally renames models. Check aistudio.google.com if you need to update this.</div>
   </div>
   <div class="toggle-row">
@@ -278,7 +278,7 @@ const K_SETTINGS = 'larderLedger4.settings';
 const K_BATCH = 'larderLedger4.batch';
 
 let state = { items: [], history: {}, latestBatchId: 0, batchOpen: false };
-let settings = { speech: true, xl: false, geminiKey: '', geminiModel: 'gemini-2.5-flash' };
+let settings = { speech: true, xl: false, geminiKey: '', geminiModel: 'gemini-3.6-flash' };
 
 function loadAll(){
   try{ state.items = JSON.parse(localStorage.getItem(K_ITEMS)) || []; }catch(e){ state.items = []; }
@@ -447,22 +447,29 @@ function dataUrlToBase64(dataUrl){ return dataUrl.split(',')[1]; }
 /* =========================================================
    GEMINI READING
 ========================================================= */
-const GEMINI_PROMPT = `You are reading a photo of food packaging from a UK supermarket delivery. Identify:
+function buildGeminiPrompt(){
+  const todayStr = new Date().toLocaleDateString('en-GB', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
+  return `You are reading a photo of food packaging from a UK supermarket delivery. Today's actual date is ${todayStr}.
+
+Identify:
 1. The product name (brief, as printed on the pack)
 2. Whether the date shown is a "Best Before" or "Use By" date
 3. The date itself
+
+Important: UK packaging often prints only the day and month (e.g. "13 AUG") with no year. If no year is printed, you MUST assume it refers to the next upcoming occurrence of that day/month on or after today's date above — never a past year. This item has just been delivered, so its date is always in the near future relative to today, typically within the next few months.
 
 Respond with ONLY JSON, no other text, in exactly this format:
 {"name": "Product Name", "dateType": "Best Before", "expiryDate": "YYYY-MM-DD", "confidence": "high"}
 
 Use "confidence": "low" if the photo is blurry, the date or name is not clearly legible, or you are guessing at any part of it.
 If you genuinely cannot determine the name or date at all, use null for that field.`;
+}
 
 async function callGemini(photos, notes){
   const apiKey = settings.geminiKey;
-  const model = settings.geminiModel || 'gemini-2.5-flash';
+  const model = settings.geminiModel || 'gemini-3.6-flash';
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
-  const parts = [{ text: GEMINI_PROMPT + (notes ? `\n\nA note from the user about this item: ${notes}` : '') }];
+  const parts = [{ text: buildGeminiPrompt() + (notes ? `\n\nA note from the user about this item: ${notes}` : '') }];
   photos.forEach(p=>{
     parts.push({ inline_data: { mime_type: 'image/jpeg', data: dataUrlToBase64(p) } });
   });
@@ -490,7 +497,7 @@ async function testGeminiKey(){
   }
   resultEl.textContent = 'Testing…';
   resultEl.style.color = 'var(--ink-soft)';
-  const model = settings.geminiModel || 'gemini-2.5-flash';
+  const model = settings.geminiModel || 'gemini-3.6-flash';
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(settings.geminiKey)}`;
   try{
     const res = await fetch(url, {
@@ -515,6 +522,18 @@ async function testGeminiKey(){
   }
 }
 
+function normalizeExpiryDate(result){
+  if(result && result.expiryDate && /^\d{4}-\d{2}-\d{2}$/.test(result.expiryDate)){
+    if(daysUntil(result.expiryDate) < -3){
+      // Likely a missing-year misread — nudge forward a year rather than trust a date that's already well in the past
+      const d = new Date(result.expiryDate + 'T00:00:00');
+      d.setFullYear(d.getFullYear() + 1);
+      result.expiryDate = isoOf(d);
+    }
+  }
+  return result;
+}
+
 function ensureOpenBatch(){
   if(!state.batchOpen){
     state.latestBatchId += 1;
@@ -537,7 +556,7 @@ async function finishItemAndReturn(){
 
   showSpinner('Asking Gemini to read this item…');
   try{
-    const result = await callGemini(photos, notes);
+    const result = normalizeExpiryDate(await callGemini(photos, notes));
     hideSpinner();
     if(result.name && result.expiryDate && result.confidence === 'high'){
       saveAsConfirmed(itemId, photos, notes, result);
