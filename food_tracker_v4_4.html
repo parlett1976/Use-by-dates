@@ -1,0 +1,1012 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<title>Larder Ledger</title>
+<style>
+  :root{
+    --bg: #FFFFFF; --ink: #0E1A14; --panel: #F4F6F2;
+    --primary: #0B3D2E; --primary-dark: #06251B; --accent: #B5541A;
+    --ok: #1B6B3C; --ok-bg: #E4F3E8; --warn: #9C5B00; --warn-bg: #FFF1D6;
+    --danger: #A3241B; --danger-bg: #FCE4E1; --yellow: #FFD53D;
+    --border: #0E1A14; --radius: 14px;
+    --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --fs-base: 19px; --fs-lg: 24px; --fs-xl: 30px;
+  }
+  body.xl-text{ --fs-base: 23px; --fs-lg: 29px; --fs-xl: 36px; }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:var(--fs-base);line-height:1.4;}
+  body{padding-bottom:30px;}
+  h1,h2,h3{margin:0;}
+  button{font-family:var(--font);cursor:pointer;}
+
+  .screen{display:none;padding:16px;max-width:640px;margin:0 auto;}
+  .screen.active{display:block;}
+
+  header.appbar{background:var(--primary);color:#fff;padding:16px 16px 14px;display:flex;align-items:center;gap:10px;justify-content:space-between;}
+  header.appbar .title{font-size:var(--fs-lg);font-weight:800;}
+  .icon-btn{background:rgba(255,255,255,0.15);color:#fff;border:2px solid rgba(255,255,255,0.4);border-radius:12px;padding:10px 14px;font-size:var(--fs-base);font-weight:700;min-height:52px;}
+
+  .bigbtn{display:block;width:100%;background:#fff;color:var(--ink);border:3px solid var(--border);border-radius:var(--radius);padding:20px 16px;font-size:var(--fs-lg);font-weight:800;text-align:left;margin-bottom:14px;min-height:76px;display:flex;align-items:center;gap:14px;}
+  .bigbtn .emoji{font-size:1.5em;flex-shrink:0;}
+  .bigbtn:active{background:var(--panel);}
+  .bigbtn.primary{background:var(--primary);color:#fff;border-color:var(--primary-dark);}
+  .bigbtn.primary:active{background:var(--primary-dark);}
+  .bigbtn.accent{background:var(--accent);color:#fff;border-color:#7a3610;}
+  .bigbtn.ok{background:var(--ok-bg);border-color:var(--ok);color:var(--ok);}
+  .bigbtn.danger{background:var(--danger-bg);border-color:var(--danger);color:var(--danger);}
+  .bigbtn:disabled{opacity:0.4;}
+  .bigbtn.small{min-height:60px;font-size:var(--fs-base);padding:14px 16px;}
+  .link-btn{background:none;border:none;color:var(--primary);font-size:16px;font-weight:700;text-decoration:underline;padding:10px 0;}
+
+  .yesno-row{display:flex;gap:12px;margin:18px 0;}
+  .yesno-row button{flex:1;font-size:var(--fs-xl);font-weight:900;padding:26px 10px;border-radius:var(--radius);min-height:96px;border:3px solid var(--border);}
+  .btn-yes{background:var(--ok-bg);color:var(--ok);border-color:var(--ok);}
+  .btn-no{background:var(--danger-bg);color:var(--danger);border-color:var(--danger);}
+
+  .speak-block{background:var(--panel);border:2px solid var(--border);border-radius:var(--radius);padding:18px;margin-bottom:16px;font-size:var(--fs-lg);font-weight:700;}
+  .speak-block .label{font-size:var(--fs-base);font-weight:600;color:#33403a;margin-bottom:4px;}
+  .repeat-fab{position:fixed;right:16px;bottom:16px;z-index:80;background:var(--primary);color:#fff;border:3px solid var(--primary-dark);border-radius:50%;width:72px;height:72px;font-size:30px;box-shadow:0 3px 10px rgba(0,0,0,0.3);}
+
+  .section-title{font-size:var(--fs-xl);font-weight:800;margin-bottom:14px;}
+  .subtle{color:#4b5952;font-size:var(--fs-base);margin-bottom:16px;}
+  .warn-banner{background:var(--warn-bg);border:2px solid var(--warn);border-radius:12px;padding:12px 14px;font-size:15px;font-weight:600;color:#5c3800;margin-bottom:16px;}
+
+  .field-block{margin-bottom:18px;}
+  .field-block label{display:block;font-weight:700;font-size:var(--fs-base);margin-bottom:6px;}
+  .field-block textarea, .field-block input[type=text], .field-block input[type=password]{width:100%;padding:14px;border-radius:12px;border:3px solid var(--border);font-size:var(--fs-lg);}
+  .hint{font-size:15px;color:#4b5952;margin-top:6px;}
+
+  .item-card{background:#fff;border:3px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:14px;}
+  .item-card.status-review{background:var(--warn-bg);border-color:var(--warn);}
+  .item-card.new-item{border-left:10px solid var(--yellow);}
+  .item-card .iname{font-size:var(--fs-lg);font-weight:800;margin-bottom:4px;}
+  .item-card .imeta{font-size:var(--fs-base);font-weight:600;}
+  .item-card .imeta.urgency-red{color:var(--danger);}
+  .item-card .imeta.urgency-amber{color:var(--warn);}
+  .item-card .imeta.urgency-green{color:var(--ok);}
+  .item-card .actions{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;}
+  .item-card .actions button{padding:10px 14px;border-radius:10px;font-size:16px;font-weight:700;border:2px solid var(--border);background:#fff;}
+
+  .search-input{width:100%;padding:14px;border-radius:12px;border:3px solid var(--border);font-size:var(--fs-base);margin-bottom:16px;}
+  .toggle-row{display:flex;align-items:center;justify-content:space-between;padding:16px 0;border-bottom:2px solid var(--panel);}
+  .toggle-row .tlabel{font-size:var(--fs-base);font-weight:700;}
+  .switch{position:relative;width:60px;height:34px;flex-shrink:0;}
+  .switch input{opacity:0;width:0;height:0;}
+  .slider{position:absolute;inset:0;background:#ccc;border-radius:34px;transition:0.2s;border:2px solid var(--border);}
+  .slider::before{content:"";position:absolute;height:24px;width:24px;left:3px;top:2px;background:#fff;border-radius:50%;transition:0.2s;}
+  input:checked + .slider{background:var(--ok);}
+  input:checked + .slider::before{transform:translateX(26px);}
+
+  .spinner-overlay{position:fixed;inset:0;background:rgba(11,61,46,0.92);display:flex;align-items:center;justify-content:center;z-index:200;color:#fff;flex-direction:column;gap:16px;font-size:var(--fs-lg);text-align:center;padding:20px;}
+  .spinner{width:50px;height:50px;border-radius:50%;border:5px solid rgba(255,255,255,0.3);border-top-color:#fff;animation:spin 0.8s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;}
+  .cal-dow{font-size:13px;text-align:center;color:#4b5952;font-weight:700;padding-bottom:4px;}
+  .cal-cell{aspect-ratio:1;background:#fff;border-radius:9px;border:2px solid var(--panel);display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:4px 2px;font-size:14px;font-weight:700;}
+  .cal-cell.today{border-color:var(--primary);border-width:3px;}
+  .cal-cell.selected{background:var(--ok-bg);}
+  .cal-dots{display:flex;gap:2px;margin-top:3px;flex-wrap:wrap;justify-content:center;}
+  .cal-dot{width:7px;height:7px;border-radius:50%;}
+  .cal-dot.urgency-red{background:var(--danger);}
+  .cal-dot.urgency-amber{background:var(--warn);}
+  .cal-dot.urgency-green{background:var(--ok);}
+  .cal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+  .cal-header button{background:var(--panel);border:2px solid var(--border);border-radius:10px;font-size:22px;padding:6px 16px;}
+
+  .toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:12px 20px;border-radius:20px;font-size:16px;z-index:150;opacity:0;transition:opacity 0.25s;pointer-events:none;font-weight:700;}
+  .toast.show{opacity:1;}
+  .photo-thumb{max-width:100%;max-height:220px;border-radius:10px;border:2px solid var(--border);margin:10px 0;display:block;}
+  .thumb-row{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0;}
+  .thumb-row img{width:70px;height:70px;object-fit:cover;border-radius:8px;border:2px solid var(--border);}
+</style>
+</head>
+<body>
+
+<header class="appbar">
+  <button class="icon-btn" id="homeBtn" onclick="goHome()" aria-label="Home">🏠 Home</button>
+  <div class="title">🥫 Larder Ledger</div>
+  <button class="icon-btn" id="menuBtn" onclick="showScreen('menu')" aria-label="Menu">☰ Menu</button>
+</header>
+
+<!-- HOME -->
+<section class="screen active" id="screen-home">
+  <div class="section-title">Add items</div>
+  <div id="noKeyWarning"></div>
+  <div class="subtle" id="sessionSummary">No items added yet this shop.</div>
+  <div id="pendingItemStatus"></div>
+
+  <button class="bigbtn primary" onclick="takePhoto('camera')"><span class="emoji">📷</span> Take Photo</button>
+  <button class="bigbtn small" id="btnAddNotes" onclick="showScreen('notes')" disabled><span class="emoji">📝</span> Add Notes to This Item</button>
+  <button class="bigbtn small" onclick="takePhoto('library')"><span class="emoji">🖼️</span> Upload Recent Photo</button>
+
+  <div style="margin-top:22px;">
+    <button class="bigbtn accent" onclick="finishShop()"><span class="emoji">🏁</span> Finish Shop</button>
+  </div>
+
+  <input type="file" accept="image/*" capture="environment" id="cameraInput" style="display:none;">
+  <input type="file" accept="image/*" id="libraryInput" style="display:none;">
+</section>
+
+<!-- PHOTO OPTIONS -->
+<section class="screen" id="screen-photo-options">
+  <div class="section-title">Photo added</div>
+  <img id="lastPhotoThumb" class="photo-thumb">
+  <div class="thumb-row" id="allPhotosRow"></div>
+  <button class="bigbtn small" onclick="retakeCurrentPhoto()"><span class="emoji">🔄</span> Retake Photo</button>
+  <button class="bigbtn small" onclick="takeAnotherPhoto()"><span class="emoji">➕</span> Take Another Photo of This Item</button>
+  <button class="bigbtn ok" onclick="finishItemAndReturn()"><span class="emoji">✅</span> Done</button>
+</section>
+
+<!-- GEMINI LOW-CONFIDENCE CONFIRM -->
+<section class="screen" id="screen-confirm">
+  <div class="section-title">Is this right?</div>
+  <div class="speak-block"><div class="label">Product name</div><div id="confirmNameText">—</div></div>
+  <div class="speak-block"><div class="label">Date found</div><div id="confirmDateText">—</div></div>
+  <div class="yesno-row">
+    <button class="btn-yes" onclick="confirmDetection(true)">✅ YES</button>
+    <button class="btn-no" onclick="confirmDetection(false)">❌ NO</button>
+  </div>
+  <button class="bigbtn small" onclick="markCurrentForReview()"><span class="emoji">📤</span> I'll sort this on my computer later</button>
+</section>
+
+<!-- NOTES -->
+<section class="screen" id="screen-notes">
+  <div class="section-title">Add a note</div>
+  <div class="field-block">
+    <label for="notesInput">Note for this item</label>
+    <textarea id="notesInput" rows="4" placeholder="Tap here, then use your keyboard's microphone button to dictate"></textarea>
+    <div class="hint">Tip: tap the text box, then tap the microphone icon on your iPhone's own keyboard to speak instead of typing. Notes also help the AI if the packaging is hard to read.</div>
+  </div>
+  <button class="bigbtn small" onclick="speak(document.getElementById('notesInput').value || 'No note has been entered yet')"><span class="emoji">🔊</span> Read note back to me</button>
+  <button class="bigbtn ok" onclick="saveNoteAndReturn()"><span class="emoji">✅</span> Save Note</button>
+</section>
+
+<!-- MENU -->
+<section class="screen" id="screen-menu">
+  <div class="section-title">Menu</div>
+  <button class="bigbtn" onclick="showScreen('list')"><span class="emoji">📋</span> My List</button>
+  <button class="bigbtn" onclick="showScreen('calendar')"><span class="emoji">📅</span> Calendar</button>
+  <button class="bigbtn" onclick="showScreen('reports')"><span class="emoji">🧾</span> Reports &amp; Export</button>
+  <button class="bigbtn" onclick="showScreen('review')"><span class="emoji">📤</span> Needs Review <span id="reviewBadge"></span></button>
+  <button class="bigbtn" onclick="showScreen('frequent')"><span class="emoji">⭐</span> Frequently Bought</button>
+  <button class="bigbtn" onclick="showScreen('backup')"><span class="emoji">💾</span> Backup &amp; Sync</button>
+  <button class="bigbtn" onclick="showScreen('settings')"><span class="emoji">⚙️</span> Settings</button>
+</section>
+
+<!-- LIST -->
+<section class="screen" id="screen-list">
+  <div class="section-title">My List</div>
+  <button class="bigbtn small" onclick="readOutList()"><span class="emoji">🔊</span> Read my list aloud</button>
+  <input type="text" class="search-input" id="listSearch" placeholder="Search items…" oninput="renderList()">
+  <div id="listContainer"></div>
+</section>
+
+<!-- CALENDAR -->
+<section class="screen" id="screen-calendar">
+  <div class="section-title">Calendar</div>
+  <div class="cal-header">
+    <button onclick="calShiftMonth(-1)" aria-label="Previous month">‹</button>
+    <strong id="calMonthLabel"></strong>
+    <button onclick="calShiftMonth(1)" aria-label="Next month">›</button>
+  </div>
+  <div class="cal-grid" id="calGrid"></div>
+  <div id="calDayDetail" style="margin-top:16px;"></div>
+</section>
+
+<!-- REPORTS & EXPORT -->
+<section class="screen" id="screen-reports">
+  <div class="section-title">Reports &amp; Export</div>
+  <div class="subtle">Items added in your latest round of photos are highlighted yellow until your next round.</div>
+  <button class="bigbtn primary" onclick="generateCalendarReportPDF()"><span class="emoji">📅</span> Calendar Report (PDF, 4 weeks)</button>
+  <button class="bigbtn primary" onclick="generateListReportPDF()"><span class="emoji">📋</span> List Report (PDF, 2 weeks)</button>
+  <div style="margin-top:20px;font-weight:700;font-size:var(--fs-base);">Export data</div>
+  <button class="bigbtn small" onclick="exportDataJSON()"><span class="emoji">🗂️</span> Export as JSON</button>
+  <button class="bigbtn small" onclick="exportDataExcel()"><span class="emoji">📊</span> Export as Excel</button>
+  <button class="bigbtn small" onclick="exportDataWord()"><span class="emoji">📄</span> Export as Word</button>
+</section>
+
+<!-- REVIEW NEEDED -->
+<section class="screen" id="screen-review">
+  <div class="section-title">Needs Review</div>
+  <div class="subtle">These couldn't be read by the AI (no internet, no key set, or it wasn't confident enough). Send the photos to your computer as a backup option.</div>
+  <button class="bigbtn accent" id="btnSendPhotos" onclick="exportReviewZip()"><span class="emoji">📤</span> Send Photos to My Computer</button>
+  <button class="bigbtn small" onclick="document.getElementById('importResultsInput').click()"><span class="emoji">📥</span> Import Results from Computer</button>
+  <input type="file" accept="application/json" id="importResultsInput" style="display:none;" onchange="importReviewResults(event)">
+  <div id="reviewContainer" style="margin-top:16px;"></div>
+</section>
+
+<!-- FREQUENT -->
+<section class="screen" id="screen-frequent">
+  <div class="section-title">Frequently Bought</div>
+  <div class="subtle">Builds up automatically as items are confirmed.</div>
+  <div id="freqContainer"></div>
+</section>
+
+<!-- BACKUP -->
+<section class="screen" id="screen-backup">
+  <div class="section-title">Backup &amp; Sync</div>
+  <div class="subtle">Export a backup file here, then import it on your other device to bring your data across. Nothing is deleted when importing.</div>
+  <button class="bigbtn ok" onclick="exportBackup()"><span class="emoji">💾</span> Export Backup File</button>
+  <button class="bigbtn small" onclick="document.getElementById('importInput').click()"><span class="emoji">📥</span> Import Backup File</button>
+  <input type="file" accept="application/json" id="importInput" style="display:none;" onchange="importBackup(event)">
+  <button class="bigbtn danger" onclick="clearAllData()"><span class="emoji">⚠️</span> Clear All Data</button>
+</section>
+
+<!-- SETTINGS -->
+<section class="screen" id="screen-settings">
+  <div class="section-title">Settings</div>
+  <div class="field-block">
+    <label for="geminiKeyInput">Gemini API key</label>
+    <input type="password" id="geminiKeyInput" placeholder="Paste your key here" onchange="saveSettings()">
+    <div class="hint">Get a free key from Google AI Studio (aistudio.google.com). Stored only on this phone — used to talk directly to Google when reading your photos.</div>
+  </div>
+  <div class="field-block">
+    <label for="geminiModelInput">Gemini model name</label>
+    <input type="text" id="geminiModelInput" placeholder="gemini-2.5-flash" onchange="saveSettings()">
+    <div class="hint">Leave as default unless it stops working — Google occasionally renames models. Check aistudio.google.com if you need to update this.</div>
+  </div>
+  <div class="toggle-row">
+    <div class="tlabel">🔊 Speak prompts aloud</div>
+    <label class="switch"><input type="checkbox" id="toggleSpeech" onchange="saveSettings()"><span class="slider"></span></label>
+  </div>
+  <div class="toggle-row">
+    <div class="tlabel">🔤 Extra large text</div>
+    <label class="switch"><input type="checkbox" id="toggleXL" onchange="saveSettings()"><span class="slider"></span></label>
+  </div>
+</section>
+
+<button class="repeat-fab" onclick="repeatLastSpeech()" aria-label="Repeat last message">🔊</button>
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script>
+/* =========================================================
+   STATE & STORAGE
+========================================================= */
+const K_ITEMS = 'larderLedger4.items';
+const K_HISTORY = 'larderLedger4.history';
+const K_SETTINGS = 'larderLedger4.settings';
+const K_BATCH = 'larderLedger4.batch';
+
+let state = { items: [], history: {}, latestBatchId: 0, batchOpen: false };
+let settings = { speech: true, xl: false, geminiKey: '', geminiModel: 'gemini-2.5-flash' };
+
+function loadAll(){
+  try{ state.items = JSON.parse(localStorage.getItem(K_ITEMS)) || []; }catch(e){ state.items = []; }
+  try{ state.history = JSON.parse(localStorage.getItem(K_HISTORY)) || {}; }catch(e){ state.history = {}; }
+  try{
+    const b = JSON.parse(localStorage.getItem(K_BATCH));
+    if(b){ state.latestBatchId = b.latestBatchId||0; state.batchOpen = !!b.batchOpen; }
+  }catch(e){}
+  try{ settings = Object.assign(settings, JSON.parse(localStorage.getItem(K_SETTINGS)) || {}); }catch(e){}
+  purgeExpired();
+  applySettingsToUI();
+}
+function saveState(){
+  localStorage.setItem(K_ITEMS, JSON.stringify(state.items));
+  localStorage.setItem(K_HISTORY, JSON.stringify(state.history));
+  localStorage.setItem(K_BATCH, JSON.stringify({latestBatchId: state.latestBatchId, batchOpen: state.batchOpen}));
+}
+function saveSettings(){
+  settings.speech = document.getElementById('toggleSpeech').checked;
+  settings.xl = document.getElementById('toggleXL').checked;
+  settings.geminiKey = document.getElementById('geminiKeyInput').value.trim();
+  settings.geminiModel = document.getElementById('geminiModelInput').value.trim() || 'gemini-2.5-flash';
+  localStorage.setItem(K_SETTINGS, JSON.stringify(settings));
+  applySettingsToUI();
+}
+function applySettingsToUI(){
+  document.getElementById('toggleSpeech').checked = settings.speech;
+  document.getElementById('toggleXL').checked = settings.xl;
+  document.getElementById('geminiKeyInput').value = settings.geminiKey;
+  document.getElementById('geminiModelInput').value = settings.geminiModel;
+  document.body.classList.toggle('xl-text', settings.xl);
+  const warn = document.getElementById('noKeyWarning');
+  warn.innerHTML = settings.geminiKey ? '' : `<div class="warn-banner">⚠️ No Gemini key set — photos will be queued for your computer instead. Add a key in Settings to read them automatically on your phone.</div>`;
+}
+function purgeExpired(){
+  const today = startOfToday();
+  state.items = state.items.filter(it => {
+    if(it.status === 'needs_review') return true;
+    const d = new Date(it.expiryDate + 'T00:00:00');
+    return d >= today;
+  });
+}
+function uid(){ if(crypto && crypto.randomUUID) return crypto.randomUUID(); return 'id-'+Date.now()+'-'+Math.random().toString(16).slice(2); }
+function startOfToday(){ const d=new Date(); d.setHours(0,0,0,0); return d; }
+function daysUntil(iso){ const d=new Date(iso+'T00:00:00'); return Math.round((d-startOfToday())/86400000); }
+function urgencyClass(iso){ const n=daysUntil(iso); if(n<=2) return 'urgency-red'; if(n<=5) return 'urgency-amber'; return 'urgency-green'; }
+function formatDaysLabel(iso){ const n=daysUntil(iso); if(n<0) return 'expired'; if(n===0) return 'today'; if(n===1) return 'tomorrow'; return n+' days'; }
+function formatDatePretty(iso){ const d=new Date(iso+'T00:00:00'); return d.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}); }
+function escapeHtml(str){ const d=document.createElement('div'); d.textContent=str; return d.innerHTML; }
+function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2200); }
+function isItemHighlighted(it){ return it.batchId === state.latestBatchId && !it.dismissed; }
+function dateStamp(){ return new Date().toISOString().slice(0,10); }
+function downloadBlob(content, mime, filename){
+  const blob = new Blob([content], {type:mime});
+  const url = URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url; a.download=filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+  toast('Downloaded '+filename);
+}
+
+/* =========================================================
+   SPEECH
+========================================================= */
+let lastSpeech = '';
+function speak(text){
+  lastSpeech = text;
+  if(!settings.speech) return;
+  if(!('speechSynthesis' in window)) return;
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.rate = 0.95;
+  window.speechSynthesis.speak(u);
+}
+function repeatLastSpeech(){
+  if(!lastSpeech){ toast('Nothing to repeat yet'); return; }
+  const wasOn = settings.speech; settings.speech = true; speak(lastSpeech); settings.speech = wasOn;
+}
+
+/* =========================================================
+   NAVIGATION
+========================================================= */
+function showScreen(name){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('screen-'+name).classList.add('active');
+  if(name==='list'){ renderList(); speak('Your list, sorted by soonest date first.'); }
+  if(name==='calendar'){ renderCalendar(); speak('Calendar view.'); }
+  if(name==='review'){ renderReview(); }
+  if(name==='frequent'){ renderFrequent(); }
+  if(name==='menu'){ speak('Menu.'); }
+  if(name==='reports'){ speak('Reports and export.'); }
+}
+function goHome(){ showScreen('home'); refreshHome(); }
+
+/* =========================================================
+   CAPTURE SESSION
+========================================================= */
+let currentItem = null;
+let sessionAdded = [];
+
+function startNewItem(){ currentItem = { id: uid(), notes:'', photos:[] }; }
+startNewItem();
+
+function refreshHome(){
+  document.getElementById('btnAddNotes').disabled = !(currentItem && currentItem.photos.length>0);
+  const summary = document.getElementById('sessionSummary');
+  summary.textContent = sessionAdded.length===0 ? 'No items added yet this shop.' : `${sessionAdded.length} item${sessionAdded.length>1?'s':''} added this shop.`;
+  const statusEl = document.getElementById('pendingItemStatus');
+  if(currentItem && currentItem.photos.length>0){
+    statusEl.innerHTML = `<div class="subtle">Current item in progress: ${currentItem.photos.length} photo${currentItem.photos.length>1?'s':''} taken. <button class="link-btn" onclick="discardCurrentItem()">Discard &amp; start over</button></div>`;
+  } else {
+    statusEl.innerHTML = '';
+  }
+  applySettingsToUI();
+}
+function discardCurrentItem(){ startNewItem(); refreshHome(); toast('Discarded'); }
+
+function takePhoto(target){
+  if(target === 'library') document.getElementById('libraryInput').click();
+  else document.getElementById('cameraInput').click();
+}
+document.getElementById('cameraInput').addEventListener('change', e=>handlePhotoFile(e.target.files[0]));
+document.getElementById('libraryInput').addEventListener('change', e=>handlePhotoFile(e.target.files[0]));
+
+function handlePhotoFile(file){
+  if(!file) return;
+  if(!currentItem) startNewItem();
+  showSpinner('Adding photo…');
+  const reader = new FileReader();
+  reader.onload = (e)=>{
+    downscale(e.target.result, 1400).then(dataUrl=>{
+      currentItem.photos.push(dataUrl);
+      hideSpinner();
+      showPhotoOptions();
+    });
+  };
+  reader.readAsDataURL(file);
+}
+function downscale(dataUrl, maxWidth){
+  return new Promise(resolve=>{
+    const img = new Image();
+    img.onload = ()=>{
+      let w=img.width, h=img.height;
+      if(w>maxWidth){ h=Math.round(h*(maxWidth/w)); w=maxWidth; }
+      const canvas = document.createElement('canvas');
+      canvas.width=w; canvas.height=h;
+      canvas.getContext('2d').drawImage(img,0,0,w,h);
+      resolve(canvas.toDataURL('image/jpeg', 0.85));
+    };
+    img.src = dataUrl;
+  });
+}
+function showPhotoOptions(){
+  const last = currentItem.photos[currentItem.photos.length-1];
+  document.getElementById('lastPhotoThumb').src = last;
+  const row = document.getElementById('allPhotosRow');
+  row.innerHTML = currentItem.photos.map(p=>`<img src="${p}">`).join('');
+  showScreen('photo-options');
+  const count = currentItem.photos.length;
+  speak(count>1 ? `Photo ${count} added. You can retake it, take another photo of this item, or tap Done.` : 'Photo added. You can retake it, take another photo of this item, or tap Done.');
+}
+function retakeCurrentPhoto(){ currentItem.photos.pop(); takePhoto('camera'); }
+function takeAnotherPhoto(){ takePhoto('camera'); }
+
+function dataUrlToBase64(dataUrl){ return dataUrl.split(',')[1]; }
+
+/* =========================================================
+   GEMINI READING
+========================================================= */
+const GEMINI_PROMPT = `You are reading a photo of food packaging from a UK supermarket delivery. Identify:
+1. The product name (brief, as printed on the pack)
+2. Whether the date shown is a "Best Before" or "Use By" date
+3. The date itself
+
+Respond with ONLY JSON, no other text, in exactly this format:
+{"name": "Product Name", "dateType": "Best Before", "expiryDate": "YYYY-MM-DD", "confidence": "high"}
+
+Use "confidence": "low" if the photo is blurry, the date or name is not clearly legible, or you are guessing at any part of it.
+If you genuinely cannot determine the name or date at all, use null for that field.`;
+
+async function callGemini(photos, notes){
+  const apiKey = settings.geminiKey;
+  const model = settings.geminiModel || 'gemini-2.5-flash';
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
+  const parts = [{ text: GEMINI_PROMPT + (notes ? `\n\nA note from the user about this item: ${notes}` : '') }];
+  photos.forEach(p=>{
+    parts.push({ inline_data: { mime_type: 'image/jpeg', data: dataUrlToBase64(p) } });
+  });
+  const body = {
+    contents: [{ parts }],
+    generationConfig: { response_mime_type: 'application/json', temperature: 0.1 }
+  };
+  const res = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  if(!res.ok){
+    const errText = await res.text().catch(()=> '');
+    throw new Error(`Gemini request failed (${res.status}): ${errText.slice(0,200)}`);
+  }
+  const data = await res.json();
+  const text = data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text;
+  if(!text) throw new Error('Gemini returned an unexpected response.');
+  return JSON.parse(text);
+}
+
+function ensureOpenBatch(){
+  if(!state.batchOpen){
+    state.latestBatchId += 1;
+    state.batchOpen = true;
+  }
+}
+
+async function finishItemAndReturn(){
+  if(currentItem.photos.length===0){ goHome(); return; }
+  const photos = currentItem.photos;
+  const notes = currentItem.notes;
+  const itemId = currentItem.id;
+
+  if(!settings.geminiKey){
+    saveAsNeedsReview(itemId, photos, notes);
+    speak('No Gemini key is set, so this has been queued for your computer instead.');
+    startNewItem(); showScreen('home'); refreshHome();
+    return;
+  }
+
+  showSpinner('Asking Gemini to read this item…');
+  try{
+    const result = await callGemini(photos, notes);
+    hideSpinner();
+    if(result.name && result.expiryDate && result.confidence === 'high'){
+      saveAsConfirmed(itemId, photos, notes, result);
+      speak(`${result.name} saved. Due ${formatDatePretty(result.expiryDate)}.`);
+      toast('Item saved');
+      startNewItem(); showScreen('home'); refreshHome();
+    } else {
+      // low confidence or partial — quick confirm
+      pendingGeminiResult = { itemId, photos, notes, result };
+      document.getElementById('confirmNameText').textContent = result.name || 'Not detected';
+      document.getElementById('confirmDateText').textContent = result.expiryDate ? `${result.dateType||'Best Before'}: ${formatDatePretty(result.expiryDate)}` : 'Not detected';
+      showScreen('confirm');
+      speak(`Gemini isn't fully sure about this one. ${result.name?'I think it says '+result.name+'.':''} ${result.expiryDate?(result.dateType||'Best Before')+' '+formatDatePretty(result.expiryDate)+'.':''} Is that right?`);
+    }
+  }catch(err){
+    console.error(err);
+    hideSpinner();
+    saveAsNeedsReview(itemId, photos, notes);
+    speak('Could not reach Gemini, so this has been queued for your computer instead.');
+    toast('Queued for review — Gemini could not be reached');
+    startNewItem(); showScreen('home'); refreshHome();
+  }
+}
+
+let pendingGeminiResult = null;
+
+function confirmDetection(yes){
+  if(!pendingGeminiResult){ showScreen('home'); return; }
+  const { itemId, photos, notes, result } = pendingGeminiResult;
+  if(yes && result.name && result.expiryDate){
+    saveAsConfirmed(itemId, photos, notes, result);
+    speak('Saved.');
+    toast('Item saved');
+  } else {
+    saveAsNeedsReview(itemId, photos, notes);
+    speak('Queued for your computer instead.');
+  }
+  pendingGeminiResult = null;
+  startNewItem();
+  showScreen('home'); refreshHome();
+}
+function markCurrentForReview(){
+  if(!pendingGeminiResult){ showScreen('home'); return; }
+  const { itemId, photos, notes } = pendingGeminiResult;
+  saveAsNeedsReview(itemId, photos, notes);
+  pendingGeminiResult = null;
+  speak('Queued for your computer.');
+  startNewItem();
+  showScreen('home'); refreshHome();
+}
+
+function saveAsConfirmed(itemId, photos, notes, result){
+  ensureOpenBatch();
+  const item = {
+    id: itemId, name: result.name, dateType: result.dateType || 'Best Before',
+    expiryDate: result.expiryDate, notes, photos: [],
+    status: 'confirmed', addedAt: Date.now(), batchId: state.latestBatchId
+  };
+  state.items.push(item);
+  sessionAdded.push(item.id);
+  const key = item.name.toLowerCase();
+  if(!state.history[key]) state.history[key] = {displayName:item.name, count:0, lastAdded:0};
+  state.history[key].count += 1;
+  state.history[key].lastAdded = Date.now();
+  state.history[key].displayName = item.name;
+  saveState();
+}
+function saveAsNeedsReview(itemId, photos, notes){
+  ensureOpenBatch();
+  const item = {
+    id: itemId, name: null, dateType: null, expiryDate: null, notes,
+    photos, status: 'needs_review', addedAt: Date.now(), batchId: state.latestBatchId
+  };
+  state.items.push(item);
+  sessionAdded.push(item.id);
+  saveState();
+}
+
+/* =========================================================
+   NOTES
+========================================================= */
+function saveNoteAndReturn(){
+  currentItem.notes = document.getElementById('notesInput').value.trim();
+  document.getElementById('notesInput').value = '';
+  speak('Note saved.');
+  showScreen('home'); refreshHome();
+}
+
+/* =========================================================
+   FINISH SHOP
+========================================================= */
+function finishShop(){
+  state.batchOpen = false;
+  saveState();
+  const confirmedCount = sessionAdded.filter(id=>{ const it=state.items.find(i=>i.id===id); return it && it.status==='confirmed'; }).length;
+  const reviewCount = sessionAdded.filter(id=>{ const it=state.items.find(i=>i.id===id); return it && it.status==='needs_review'; }).length;
+  showScreen('list');
+  if(sessionAdded.length===0){
+    speak('You have not added any items yet.');
+  } else if(reviewCount===0){
+    speak(`Shop finished. ${confirmedCount} item${confirmedCount>1?'s':''} confirmed and highlighted as new.`);
+  } else {
+    speak(`Shop finished. ${confirmedCount} confirmed, ${reviewCount} need review on your computer.`);
+  }
+  sessionAdded = [];
+}
+
+/* =========================================================
+   LIST
+========================================================= */
+function renderList(){
+  const container = document.getElementById('listContainer');
+  const query = (document.getElementById('listSearch').value || '').toLowerCase();
+  let items = state.items.filter(it => it.status==='confirmed' && it.name && it.name.toLowerCase().includes(query));
+  items.sort((a,b)=>(a.expiryDate||'').localeCompare(b.expiryDate||''));
+  if(items.length===0){
+    container.innerHTML = `<div class="subtle">Nothing confirmed yet.</div>`;
+    return;
+  }
+  container.innerHTML = items.map(it=>{
+    const urg = urgencyClass(it.expiryDate);
+    const isNew = isItemHighlighted(it);
+    return `<div class="item-card ${isNew?'new-item':''}">
+      <div class="iname">${escapeHtml(it.name)}</div>
+      <div class="imeta ${urg}">${it.dateType}: ${formatDatePretty(it.expiryDate)} — ${formatDaysLabel(it.expiryDate)}</div>
+      ${it.notes?`<div class="hint">${escapeHtml(it.notes)}</div>`:''}
+      <div class="actions">
+        ${isNew?`<button onclick="dismissHighlight('${it.id}')">Dismiss highlight</button>`:''}
+        <button onclick="deleteItem('${it.id}')">Delete</button>
+      </div></div>`;
+  }).join('');
+}
+function readOutList(){
+  const items = state.items.filter(it=>it.status==='confirmed').sort((a,b)=>(a.expiryDate||'').localeCompare(b.expiryDate||''));
+  if(items.length===0){ speak('Your list is empty.'); return; }
+  const parts = items.slice(0,15).map(it=>`${it.name}, ${formatDaysLabel(it.expiryDate)}`);
+  speak(`You have ${items.length} items. ${parts.join('. ')}.`);
+}
+function dismissHighlight(id){ const it=state.items.find(i=>i.id===id); if(it){ it.dismissed=true; saveState(); renderList(); } }
+function deleteItem(id){ if(!confirm('Delete this item?')) return; state.items=state.items.filter(i=>i.id!==id); saveState(); renderList(); renderCalendar(); renderReview(); }
+
+/* =========================================================
+   CALENDAR
+========================================================= */
+let calDate = new Date(); calDate.setDate(1);
+function calShiftMonth(delta){ calDate.setMonth(calDate.getMonth()+delta); renderCalendar(); }
+function isoOf(d){ return `${d.getFullYear()}-${(d.getMonth()+1).toString().padStart(2,'0')}-${d.getDate().toString().padStart(2,'0')}`; }
+function getMonday(d){ const day=(d.getDay()+6)%7; const m=new Date(d); m.setDate(d.getDate()-day); m.setHours(0,0,0,0); return m; }
+function addDays(d,n){ const r=new Date(d); r.setDate(r.getDate()+n); return r; }
+
+function renderCalendar(){
+  const year=calDate.getFullYear(), month=calDate.getMonth();
+  document.getElementById('calMonthLabel').textContent = calDate.toLocaleDateString('en-GB',{month:'long',year:'numeric'});
+  const grid=document.getElementById('calGrid'); grid.innerHTML='';
+  ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].forEach(d=>{ const el=document.createElement('div'); el.className='cal-dow'; el.textContent=d; grid.appendChild(el); });
+  const firstDay=new Date(year,month,1);
+  let startOffset=firstDay.getDay()-1; if(startOffset<0) startOffset=6;
+  const daysInMonth=new Date(year,month+1,0).getDate();
+  const todayIso=isoOf(new Date());
+  const byDate={};
+  state.items.filter(it=>it.status==='confirmed').forEach(it=>{ (byDate[it.expiryDate]=byDate[it.expiryDate]||[]).push(it); });
+  for(let i=0;i<startOffset;i++){ const c=document.createElement('div'); c.className='cal-cell'; c.style.visibility='hidden'; grid.appendChild(c); }
+  for(let day=1; day<=daysInMonth; day++){
+    const iso = `${year}-${(month+1).toString().padStart(2,'0')}-${day.toString().padStart(2,'0')}`;
+    const cell = document.createElement('div');
+    cell.className = 'cal-cell' + (iso===todayIso?' today':'');
+    const dayItems = byDate[iso]||[];
+    let dots = dayItems.length ? '<div class="cal-dots">'+dayItems.slice(0,6).map(it=>`<span class="cal-dot ${urgencyClass(it.expiryDate)}"></span>`).join('')+'</div>' : '';
+    cell.innerHTML = `<div>${day}</div>${dots}`;
+    if(dayItems.length){
+      cell.onclick = ()=>{
+        document.querySelectorAll('.cal-cell').forEach(c=>c.classList.remove('selected'));
+        cell.classList.add('selected');
+        document.getElementById('calDayDetail').innerHTML = `<div class="section-title" style="font-size:20px;">${formatDatePretty(iso)}</div>` +
+          dayItems.map(it=>`<div class="item-card ${isItemHighlighted(it)?'new-item':''}"><div class="iname">${escapeHtml(it.name)}</div><div class="imeta">${it.dateType}</div></div>`).join('');
+        speak(`${formatDatePretty(iso)}. ${dayItems.map(it=>it.name).join(', ')}.`);
+      };
+    }
+    grid.appendChild(cell);
+  }
+  document.getElementById('calDayDetail').innerHTML = '';
+}
+
+/* =========================================================
+   REPORTS — PDF
+========================================================= */
+function generateCalendarReportPDF(){
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({orientation:'landscape', unit:'mm', format:'a4'});
+  const items = state.items.filter(it=>it.status==='confirmed');
+  const byDate = {}; items.forEach(it=>{(byDate[it.expiryDate]=byDate[it.expiryDate]||[]).push(it);});
+  const start = getMonday(new Date());
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const marginX=8, marginY=16;
+  const cols=7, rows=4;
+  const cellW = (pageW - marginX*2)/cols;
+  const cellH = (pageH - marginY*2)/rows;
+
+  doc.setFontSize(14);
+  doc.text(`Larder Ledger — 4 Week Calendar (from ${formatDatePretty(isoOf(start))})`, marginX, 10);
+
+  for(let r=0;r<rows;r++){
+    for(let c=0;c<cols;c++){
+      const date = addDays(start, r*7+c);
+      const iso = isoOf(date);
+      const x = marginX + c*cellW;
+      const y = marginY + r*cellH;
+      doc.setDrawColor(180);
+      doc.rect(x,y,cellW,cellH);
+      doc.setFontSize(8);
+      doc.setFont(undefined,'bold');
+      doc.text(date.toLocaleDateString('en-GB',{weekday:'short',day:'2-digit',month:'short'}), x+2, y+5);
+      doc.setFont(undefined,'normal');
+      let ty = y+10;
+      (byDate[iso]||[]).forEach(it=>{
+        if(ty > y+cellH-2) return;
+        const lines = doc.splitTextToSize(it.name, cellW-4);
+        lines.forEach(line=>{
+          if(ty > y+cellH-2) return;
+          if(isItemHighlighted(it)){
+            const tw = doc.getTextWidth(line);
+            doc.setFillColor(255,213,61);
+            doc.rect(x+1, ty-3.2, Math.min(tw+1.5,cellW-3), 4, 'F');
+          }
+          doc.text(line, x+2, ty);
+          ty += 4;
+        });
+      });
+    }
+  }
+  doc.save(`larder-ledger-calendar-${dateStamp()}.pdf`);
+  toast('Calendar report downloaded');
+}
+
+function generateListReportPDF(){
+  const { jsPDF } = window.jspdf;
+  const items = state.items.filter(it=>it.status==='confirmed');
+  const byDate = {}; items.forEach(it=>{(byDate[it.expiryDate]=byDate[it.expiryDate]||[]).push(it);});
+  const start = getMonday(new Date());
+  const dates = [];
+  for(let i=0;i<14;i++){ const d=addDays(start,i); const iso=isoOf(d); if(byDate[iso]) dates.push({iso, date:d, items: byDate[iso]}); }
+
+  const doc = new jsPDF({orientation:'portrait', unit:'mm', format:'a4'});
+  const marginX=15, marginTop=22, marginBottom=15;
+  const pageH = doc.internal.pageSize.getHeight();
+  const pageW = doc.internal.pageSize.getWidth();
+  const usableHeightPerPage = pageH - marginTop - marginBottom;
+  const maxTotalHeight = usableHeightPerPage*2;
+
+  if(dates.length===0){
+    doc.setFontSize(16);
+    doc.text('Larder Ledger — 2 Week List', marginX, 15);
+    doc.setFontSize(12);
+    doc.text('Nothing due in the next two weeks.', marginX, 30);
+    doc.save(`larder-ledger-list-${dateStamp()}.pdf`);
+    return;
+  }
+
+  let fontSize = 26, layout;
+  while(fontSize >= 10){
+    doc.setFontSize(fontSize);
+    const headerLH = fontSize*0.42;
+    const itemLH = fontSize*0.38;
+    let totalH = 0;
+    const blocks = dates.map(d=>{
+      const text = d.items.map(it=>it.name).join(', ');
+      const lines = doc.splitTextToSize(text, pageW - marginX*2);
+      const blockH = headerLH + lines.length*itemLH + itemLH*0.6;
+      totalH += blockH;
+      return {
+        header: d.date.toLocaleDateString('en-GB',{weekday:'short', day:'2-digit', month:'short'}),
+        lines, blockH,
+        hasNew: d.items.some(it=>isItemHighlighted(it))
+      };
+    });
+    if(totalH <= maxTotalHeight || fontSize===10){ layout = {fontSize, headerLH, itemLH, blocks}; break; }
+    fontSize -= 1;
+  }
+
+  doc.setFontSize(14);
+  doc.text('Larder Ledger — 2 Week List', marginX, 14);
+  doc.setFontSize(layout.fontSize);
+  let y = marginTop;
+  layout.blocks.forEach(b=>{
+    if(y + b.blockH > pageH - marginBottom){ doc.addPage(); y = marginTop; }
+    if(b.hasNew){
+      doc.setFillColor(255,213,61);
+      doc.rect(marginX-2, y-layout.headerLH+1, pageW-marginX*2+4, b.blockH-2, 'F');
+    }
+    doc.setFont(undefined,'bold');
+    doc.text(b.header, marginX, y);
+    y += layout.headerLH;
+    doc.setFont(undefined,'normal');
+    b.lines.forEach(line=>{ doc.text(line, marginX, y); y += layout.itemLH; });
+    y += layout.itemLH*0.6;
+  });
+  doc.save(`larder-ledger-list-${dateStamp()}.pdf`);
+  toast('List report downloaded');
+}
+
+/* =========================================================
+   EXPORT DATA
+========================================================= */
+function getExportRows(){
+  return state.items.filter(it=>it.status==='confirmed').sort((a,b)=>(a.expiryDate||'').localeCompare(b.expiryDate||'')).map(it=>({
+    name: it.name, dateType: it.dateType, expiryDate: it.expiryDate,
+    daysLeft: daysUntil(it.expiryDate), notes: it.notes || ''
+  }));
+}
+function exportDataJSON(){
+  downloadBlob(JSON.stringify(getExportRows(), null, 2), 'application/json', `larder-ledger-export-${dateStamp()}.json`);
+}
+function exportDataExcel(){
+  const rows = getExportRows().map(r=>({
+    'Product Name': r.name, 'Date Type': r.dateType, 'Expiry Date': r.expiryDate,
+    'Days Left': r.daysLeft, 'Notes': r.notes
+  }));
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Larder Ledger');
+  XLSX.writeFile(wb, `larder-ledger-export-${dateStamp()}.xlsx`);
+  toast('Excel file downloaded');
+}
+function exportDataWord(){
+  const rows = getExportRows();
+  const rowsHtml = rows.map(r=>`<tr><td>${escapeHtml(r.name)}</td><td>${r.dateType}</td><td>${formatDatePretty(r.expiryDate)}</td><td>${r.daysLeft}</td><td>${escapeHtml(r.notes)}</td></tr>`).join('');
+  const html = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+  <head><meta charset='utf-8'><title>Larder Ledger Export</title></head>
+  <body>
+  <h1>Larder Ledger — Export (${dateStamp()})</h1>
+  <table border="1" cellspacing="0" cellpadding="4">
+  <tr><th>Product</th><th>Type</th><th>Date</th><th>Days Left</th><th>Notes</th></tr>
+  ${rowsHtml}
+  </table>
+  </body></html>`;
+  downloadBlob(html, 'application/msword', `larder-ledger-export-${dateStamp()}.doc`);
+}
+
+/* =========================================================
+   REVIEW NEEDED — ZIP EXPORT + SHARE (fallback path)
+========================================================= */
+function renderReview(){
+  const items = state.items.filter(it=>it.status==='needs_review');
+  document.getElementById('reviewBadge').textContent = items.length ? `(${items.length})` : '';
+  document.getElementById('btnSendPhotos').disabled = items.length===0;
+  const container = document.getElementById('reviewContainer');
+  if(items.length===0){ container.innerHTML = `<div class="subtle">Nothing needs review right now.</div>`; return; }
+  container.innerHTML = items.map(it=>`
+    <div class="item-card status-review">
+      <div class="iname">Item added ${new Date(it.addedAt).toLocaleDateString('en-GB')}</div>
+      <div class="thumb-row">${it.photos.map(p=>`<img src="${p}">`).join('')}</div>
+      ${it.notes?`<div class="hint">${escapeHtml(it.notes)}</div>`:''}
+      <div class="actions"><button onclick="deleteItem('${it.id}')">Delete</button></div>
+    </div>`).join('');
+}
+async function exportReviewZip(){
+  const items = state.items.filter(it=>it.status==='needs_review');
+  if(items.length===0){ toast('Nothing to send'); speak('Nothing needs review right now.'); return; }
+  showSpinner('Preparing photos…');
+  const zip = new JSZip();
+  const idList = [];
+  items.forEach(it=>{
+    idList.push(it.id + (it.notes ? `  (note: ${it.notes})` : ''));
+    it.photos.forEach((p, idx)=>{ zip.file(`LL_${it.id}_${idx+1}.jpg`, dataUrlToBase64(p), {base64:true}); });
+  });
+  const instructions = `Larder Ledger — photos to read
+
+Please look at each set of photos below (grouped by the ID in the filename, e.g. all files starting "LL_abc123_" belong to the same item) and work out:
+1. The product name
+2. Whether it's a "Best Before" or "Use By" date
+3. The date itself
+
+Reply with ONLY a JSON array, no other text, in exactly this format:
+[
+  {"id": "abc123", "name": "Product Name", "dateType": "Best Before", "expiryDate": "2026-08-01"}
+]
+
+Use the ID exactly as it appears in the filenames. Dates must be YYYY-MM-DD.
+
+Item IDs in this batch, with any notes attached:
+${idList.map(l=>'- '+l).join('\n')}
+`;
+  zip.file('instructions.txt', instructions);
+  const blob = await zip.generateAsync({type:'blob'});
+  hideSpinner();
+  const fileName = `larder-ledger-photos-${dateStamp()}.zip`;
+  const file = new File([blob], fileName, {type:'application/zip'});
+  if(navigator.canShare && navigator.canShare({files:[file]})){
+    try{
+      await navigator.share({ files:[file], title:'Larder Ledger photos', text:'Food packaging photos to read — see instructions.txt inside.' });
+      toast('Sent');
+      speak('Sent. Open the file on your computer, extract it, then follow the instructions inside.');
+      return;
+    }catch(err){ if(err.name==='AbortError') return; console.error(err); }
+  }
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = fileName;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast('Downloaded — attach this file to an email to yourself');
+  speak('Downloaded. Please attach this file to an email to yourself.');
+}
+function importReviewResults(event){
+  const file = event.target.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = (e)=>{
+    try{
+      const results = JSON.parse(e.target.result);
+      let matched = 0;
+      results.forEach(r=>{
+        const it = state.items.find(i=>i.id===r.id);
+        if(it && r.name && r.expiryDate){
+          it.name = r.name; it.dateType = r.dateType || 'Best Before'; it.expiryDate = r.expiryDate;
+          it.status = 'confirmed'; it.photos = [];
+          const key = it.name.toLowerCase();
+          if(!state.history[key]) state.history[key] = {displayName:it.name, count:0, lastAdded:0};
+          state.history[key].count += 1;
+          state.history[key].lastAdded = Date.now();
+          state.history[key].displayName = it.name;
+          matched++;
+        }
+      });
+      purgeExpired(); saveState();
+      renderReview(); renderList(); renderCalendar();
+      toast(`${matched} item(s) updated`);
+      speak(`${matched} item${matched===1?'':'s'} updated from your computer.`);
+    }catch(err){ console.error(err); alert('That file could not be read.'); }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+/* =========================================================
+   FREQUENT
+========================================================= */
+function renderFrequent(){
+  const rows = Object.values(state.history).sort((a,b)=>b.count-a.count);
+  const container = document.getElementById('freqContainer');
+  if(rows.length===0){ container.innerHTML = `<div class="subtle">Nothing tracked yet.</div>`; return; }
+  container.innerHTML = rows.map(h=>`<div class="item-card"><div class="iname">${escapeHtml(h.displayName)}</div><div class="imeta">Bought ${h.count} time${h.count>1?'s':''} — last ${new Date(h.lastAdded).toLocaleDateString('en-GB')}</div></div>`).join('');
+}
+
+/* =========================================================
+   BACKUP
+========================================================= */
+function exportBackup(){
+  const payload = { exportedAt:new Date().toISOString(), items: state.items, history: state.history, latestBatchId: state.latestBatchId };
+  downloadBlob(JSON.stringify(payload,null,2), 'application/json', `larder-ledger-backup-${dateStamp()}.json`);
+}
+function importBackup(event){
+  const file = event.target.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = (e)=>{
+    try{
+      const data = JSON.parse(e.target.result);
+      let added = 0;
+      const existing = new Set(state.items.map(i=>i.id));
+      (data.items||[]).forEach(it=>{ if(!existing.has(it.id)){ state.items.push(it); added++; } });
+      Object.entries(data.history||{}).forEach(([k,h])=>{
+        if(!state.history[k]) state.history[k]=h;
+        else{
+          state.history[k].count = Math.max(state.history[k].count,h.count);
+          if(h.lastAdded > state.history[k].lastAdded){ state.history[k].lastAdded=h.lastAdded; state.history[k].displayName=h.displayName; }
+        }
+      });
+      if(data.latestBatchId && data.latestBatchId > state.latestBatchId) state.latestBatchId = data.latestBatchId;
+      purgeExpired(); saveState();
+      renderList(); renderCalendar(); renderFrequent(); renderReview();
+      toast(`${added} new item(s) merged`);
+      speak(`Import complete. ${added} new items merged in.`);
+    }catch(err){ alert('That file could not be read as a Larder Ledger backup.'); }
+  };
+  reader.readAsText(file);
+  event.target.value='';
+}
+function clearAllData(){
+  if(!confirm("This deletes everything on this device. Continue?")) return;
+  state.items=[]; state.history={}; state.latestBatchId=0; state.batchOpen=false; saveState();
+  renderList(); renderCalendar(); renderFrequent(); renderReview();
+  toast('All data cleared'); speak('All data cleared.');
+}
+
+/* =========================================================
+   SPINNER
+========================================================= */
+function showSpinner(msg){
+  let el = document.getElementById('spinnerOverlay');
+  if(!el){
+    el = document.createElement('div');
+    el.id = 'spinnerOverlay';
+    el.className = 'spinner-overlay';
+    el.innerHTML = `<div class="spinner"></div><div id="spinnerMsg"></div>`;
+    document.body.appendChild(el);
+  }
+  document.getElementById('spinnerMsg').textContent = msg;
+  el.style.display = 'flex';
+}
+function hideSpinner(){ const el=document.getElementById('spinnerOverlay'); if(el) el.style.display='none'; }
+
+/* =========================================================
+   INIT
+========================================================= */
+loadAll();
+saveState();
+refreshHome();
+</script>
+</body>
+</html>
